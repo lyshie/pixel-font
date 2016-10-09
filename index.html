@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta http-equiv="X-UA-Compatible" content="chrome=1, IE=edge">
+    <title>Pixel</title>
+
+    <script src="http://code.jquery.com/jquery-1.12.4.min.js"></script>
+</head>
+
+<body>
+    <input type="text" id="char" value="A文字">
+    <select id="family">
+		<option value="新細明體" selected>新細明體</option>
+		<option value="細明體">細明體</option>
+		<option value="標楷體">標楷體</option>
+		<option value="Arial">Arial</option>
+		<option value="Georgia">Georgia</option>
+		<option value="LiHei Pro">LiHei Pro</option>
+		<option value="Times New Roman">Times New Roman</option>
+		<option value="Noto Sans CJK TC">Noto Sans CJK TC</option>
+	</select>
+    <input type="range" id="zoom" min="1" max="24" step="1" value="4">
+    <p>
+        <canvas id="buffer" width="200" height="200" style="display:none;"></canvas>
+        <canvas id="paper" width="1000" height="400"></canvas>
+    </p>
+    <script type="text/javascript" charset="utf-8">
+        jQuery.noConflict();
+        (function($)
+        {
+            $(function()
+            {
+                function setFont(canvas, size, family)
+                {
+                    var ctx = canvas.getContext("2d");
+                    ctx.textBaseline = "top";
+                    ctx.font = size + "pt " + family;
+                }
+
+                function drawGrid(canvas, zoom, width, height)
+                {
+                    var ctx = canvas.getContext("2d");
+                    ctx.lineWidth = 1;
+                    ctx.strokeStyle = "#cccccc";
+                    for (i = 0; i < width * zoom; i += zoom)
+                    {
+                        for (j = 0; j < height * zoom; j += zoom)
+                        {
+                            ctx.strokeRect(i, j, zoom, zoom);
+                        }
+                    }
+                }
+
+                function clear(canvas)
+                {
+                    var ctx = canvas.getContext("2d");
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                }
+
+                function copy(src, dest, zoom, width, height)
+                {
+                    var ctx_src = src.getContext("2d");
+                    var ctx_dest = dest.getContext("2d");
+
+                    for (var x = 0; x < Math.min(width, parseInt(
+                            dest.width /
+                            zoom)); x++)
+                    {
+                        for (var y = 0; y < Math.min(height,
+                                parseInt(dest.height /
+                                    zoom)); y++)
+                        {
+                            // single pixel infomation
+                            var p = ctx_src.getImageData(x, y, 1,
+                                1);
+
+                            // zoom in/out
+                            // 1 to 4, 9, 16, 25 ...
+                            for (var i = 0; i < zoom; i++)
+                            {
+                                for (var j = 0; j < zoom; j++)
+                                {
+                                    ctx_dest.putImageData(p,
+                                        x * zoom + i, y *
+                                        zoom + j
+                                    );
+                                }
+                            }
+                        }
+
+                    }
+                }
+
+                function drawText(canvas, text)
+                {
+                    var ctx = canvas.getContext("2d");
+                    // convert point to pixel
+                    var height = parseInt(parseInt(ctx.font) /
+                        0.75);
+
+                    var x = 0;
+                    for (var i = 0; i < text.length; i++)
+                    {
+                        var width = ctx.measureText(text[i]).width;
+                        ctx.fillStyle = colors[i % 3];
+                        ctx.lineWidth = 0;
+                        ctx.fillRect(x, 0, width, height);
+                        x = x + width;
+                    }
+                    ctx.fillStyle = "#000000";
+                    ctx.fillText(text, 0, 0);
+
+                    var img_data = ctx.getImageData(0, 0, canvas.width,
+                        canvas.height);
+
+                    return {
+                        width: ctx.measureText(text).width,
+                        height: height
+                    };
+                }
+
+                function repaint()
+                {
+                    var text = $("#char").val();
+                    var zoom = parseInt($("#zoom").val());
+
+                    // draw on buffer
+                    clear(buffer);
+                    setFont(buffer, 12, $("#family").val());
+                    var m = drawText(buffer, text);
+
+                    // copy buffer to paper
+                    clear(paper);
+                    copy(buffer, paper, zoom, m.width, m.height);
+                    drawGrid(paper, zoom, m.width, m.height);
+                }
+
+                // More code using $ as alias to jQuery
+                var colors = ["rgba(255, 0, 0, 0.3)",
+                    "rgba(0, 255, 0, 0.3)",
+                    "rgba(0, 0, 255, 0.3)"
+                ];
+
+                var buffer = document.getElementById("buffer"); // text, rect
+                var paper = document.getElementById("paper"); // grid
+                var ctx_buffer = buffer.getContext("2d");
+                var ctx_paper = paper.getContext("2d");
+
+                // paint on loading page
+                repaint();
+
+                // event binding
+                $("#family").change(function()
+                {
+                    repaint();
+                });
+
+                $("#zoom").change(function()
+                {
+                    repaint();
+                });
+
+                // not repaint too quickly
+                var last_text = "";
+                $("#char").keyup(function()
+                {
+                    var text = $(this).val();
+                    if (text != last_text)
+                    {
+                        last_text = text;
+                        repaint();
+                    }
+                });
+            });
+        })(jQuery);
+
+        // Other code using $ as an alias to the other library
+    </script>
+</body>
+
+</html>
