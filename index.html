@@ -25,8 +25,10 @@
     <input type="range" id="zoom" min="1" max="24" step="1" value="4">
     <p>
         <canvas id="buffer" width="200" height="200" style="display:none;"></canvas>
-        <canvas id="paper" width="1000" height="400"></canvas>
+        <canvas id="paper" width="1000" height="400" style="display:none;"></canvas>
+        <canvas id="out" width="1000" height="400"></canvas>
     </p>
+
     <script type="text/javascript" charset="utf-8">
         jQuery.noConflict();
         (function($)
@@ -45,13 +47,16 @@
                     var ctx = canvas.getContext("2d");
                     ctx.lineWidth = 1;
                     ctx.strokeStyle = "#cccccc";
+					
+					ctx.beginPath();
                     for (i = 0; i < width * zoom; i += zoom)
                     {
                         for (j = 0; j < height * zoom; j += zoom)
                         {
-                            ctx.strokeRect(i, j, zoom, zoom);
+                            ctx.rect(i, j, zoom, zoom);
                         }
                     }
+					ctx.stroke();
                 }
 
                 function clear(canvas)
@@ -74,11 +79,15 @@
                                     zoom)); y++)
                         {
                             // single pixel infomation
-                            var p = ctx_src.getImageData(x, y, 1,
-                                1);
+                            var data = ctx_src.getImageData(x, y, 1,
+                                1).data;
 
                             // zoom in/out
                             // 1 to 4, 9, 16, 25 ...
+							ctx_dest.lineWidth = 1;
+							ctx_dest.fillStyle = "rgba(" + data[0] + "," + data[1] + "," + data[2] + "," + (parseInt(data[3])/255) + ")";
+							ctx_dest.fillRect(x * zoom, y * zoom, zoom, zoom);
+							/*
                             for (var i = 0; i < zoom; i++)
                             {
                                 for (var j = 0; j < zoom; j++)
@@ -89,6 +98,7 @@
                                     );
                                 }
                             }
+							*/
                         }
 
                     }
@@ -113,9 +123,6 @@
                     ctx.fillStyle = "#000000";
                     ctx.fillText(text, 0, 0);
 
-                    var img_data = ctx.getImageData(0, 0, canvas.width,
-                        canvas.height);
-
                     return {
                         width: ctx.measureText(text).width,
                         height: height
@@ -136,6 +143,8 @@
                     clear(paper);
                     copy(buffer, paper, zoom, m.width, m.height);
                     drawGrid(paper, zoom, m.width, m.height);
+					
+					drawOutput(paper, out);
                 }
 
                 // More code using $ as alias to jQuery
@@ -143,9 +152,16 @@
                     "rgba(0, 255, 0, 0.3)",
                     "rgba(0, 0, 255, 0.3)"
                 ];
+				
+				function drawOutput(buffer, output)
+				{
+					clear(output);
+					output.getContext("2d").drawImage(buffer, 0, 0);
+				}
 
                 var buffer = document.getElementById("buffer"); // text, rect
                 var paper = document.getElementById("paper"); // grid
+                var out = document.getElementById("out"); // grid
                 var ctx_buffer = buffer.getContext("2d");
                 var ctx_paper = paper.getContext("2d");
 
